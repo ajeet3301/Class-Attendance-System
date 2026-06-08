@@ -9,9 +9,9 @@ const SmartAttendanceSystem = () => {
   // Mock data
   const [users, setUsers] = useState([
     { id: 't1', email: 'teacher@college.edu', password: 'teacher123', role: 'teacher', name: 'Dr. Smith' },
-    { id: 's1', enrollment: 'CSE2101', password: 'student123', role: 'student', name: 'John Doe' },
-    { id: 's2', enrollment: 'CSE2102', password: 'student123', role: 'student', name: 'Jane Smith' },
-    { id: 's3', enrollment: 'CSE2103', password: 'student123', role: 'student', name: 'Mike Johnson' }
+    { id: 's1', enrollment: 'CSE2101', password: 'student123', role: 'student', name: 'Ajeet' },
+    { id: 's2', enrollment: 'CSE2102', password: 'student123', role: 'student', name: 'ram laal' },
+    { id: 's3', enrollment: 'CSE2103', password: 'student123', role: 'student', name: 'manoj mistary' }
   ]);
 
   const [classes, setClasses] = useState([
