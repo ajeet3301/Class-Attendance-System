@@ -1,0 +1,524 @@
+import React, { useState, useEffect } from 'react';
+import { Users, Calendar, Clock, CheckCircle, XCircle, Download, Plus, LogOut, BarChart3 } from 'lucide-react';
+
+const SmartAttendanceSystem = () => {
+  const [userRole, setUserRole] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [activeView, setActiveView] = useState('login');
+  
+  // Mock data
+  const [users, setUsers] = useState([
+    { id: 't1', email: 'teacher@college.edu', password: 'teacher123', role: 'teacher', name: 'Dr. Smith' },
+    { id: 's1', enrollment: 'CSE2101', password: 'student123', role: 'student', name: 'John Doe' },
+    { id: 's2', enrollment: 'CSE2102', password: 'student123', role: 'student', name: 'Jane Smith' },
+    { id: 's3', enrollment: 'CSE2103', password: 'student123', role: 'student', name: 'Mike Johnson' }
+  ]);
+
+  const [classes, setClasses] = useState([
+    { 
+      id: 'c1', 
+      subject: 'Data Structures', 
+      section: 'CSE-A', 
+      semester: '3rd', 
+      teacherId: 't1',
+      time: '10:00-11:00',
+      days: ['Mon', 'Wed', 'Fri'],
+      students: ['s1', 's2', 's3']
+    }
+  ]);
+
+  const [sessions, setSessions] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+
+  // Login Component
+  const LoginScreen = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loginType, setLoginType] = useState('teacher');
+
+    const handleLogin = () => {
+      const user = users.find(u => 
+        loginType === 'teacher' 
+          ? u.email === email && u.password === password && u.role === 'teacher'
+          : u.enrollment === email && u.password === password && u.role === 'student'
+      );
+
+      if (user) {
+        setCurrentUser(user);
+        setUserRole(user.role);
+        setActiveView(user.role === 'teacher' ? 'teacherDashboard' : 'studentDashboard');
+      } else {
+        alert('Invalid credentials');
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="bg-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Users className="text-white" size={32} />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-800">Smart Attendance</h1>
+            <p className="text-gray-600 mt-2">Secure & Efficient Class Management</p>
+          </div>
+
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setLoginType('teacher')}
+              className={`flex-1 py-2 rounded-lg font-medium transition ${
+                loginType === 'teacher' 
+                  ? 'bg-indigo-600 text-white' 
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              Teacher
+            </button>
+            <button
+              onClick={() => setLoginType('student')}
+              className={`flex-1 py-2 rounded-lg font-medium transition ${
+                loginType === 'student' 
+                  ? 'bg-indigo-600 text-white' 
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              Student
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {loginType === 'teacher' ? 'Email' : 'Enrollment Number'}
+              </label>
+              <input
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder={loginType === 'teacher' ? 'teacher@college.edu' : 'CSE2101'}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="Enter password"
+              />
+            </div>
+
+            <button
+              onClick={handleLogin}
+              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition"
+            >
+              Login
+            </button>
+          </div>
+
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg text-sm">
+            <p className="font-semibold text-blue-900 mb-2">Demo Credentials:</p>
+            <p className="text-blue-800">Teacher: teacher@college.edu / teacher123</p>
+            <p className="text-blue-800">Student: CSE2101 / student123</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Teacher Dashboard
+  const TeacherDashboard = () => {
+    const [showCreateClass, setShowCreateClass] = useState(false);
+    const [newClass, setNewClass] = useState({
+      subject: '', section: '', semester: '', time: '', days: []
+    });
+
+    const teacherClasses = classes.filter(c => c.teacherId === currentUser.id);
+
+    const createClass = () => {
+      const classId = 'c' + (classes.length + 1);
+      setClasses([...classes, {
+        ...newClass,
+        id: classId,
+        teacherId: currentUser.id,
+        students: []
+      }]);
+      setShowCreateClass(false);
+      setNewClass({ subject: '', section: '', semester: '', time: '', days: [] });
+    };
+
+    const startAttendance = (classItem) => {
+      const sessionCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const newSession = {
+        id: 's' + (sessions.length + 1),
+        classId: classItem.id,
+        code: sessionCode,
+        startTime: new Date(),
+        endTime: new Date(Date.now() + 5 * 60000),
+        active: true,
+        date: new Date().toLocaleDateString()
+      };
+      setSessions([...sessions, newSession]);
+      setActiveView('liveSession');
+    };
+
+    const getAttendancePercentage = (classId) => {
+      const classRecords = attendanceRecords.filter(r => r.classId === classId);
+      if (classRecords.length === 0) return 0;
+      const present = classRecords.filter(r => r.status === 'present').length;
+      return Math.round((present / classRecords.length) * 100);
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="bg-indigo-600 w-10 h-10 rounded-lg flex items-center justify-center">
+                <Users className="text-white" size={20} />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-800">Teacher Dashboard</h1>
+                <p className="text-sm text-gray-600">{currentUser.name}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { setUserRole(null); setCurrentUser(null); setActiveView('login'); }}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">My Classes</h2>
+            <button
+              onClick={() => setShowCreateClass(true)}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+            >
+              <Plus size={20} />
+              Create Class
+            </button>
+          </div>
+
+          {showCreateClass && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-xl p-6 w-full max-w-md">
+                <h3 className="text-xl font-bold mb-4">Create New Class</h3>
+                <div className="space-y-4">
+                  <input
+                    placeholder="Subject Name"
+                    value={newClass.subject}
+                    onChange={(e) => setNewClass({...newClass, subject: e.target.value})}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                  <input
+                    placeholder="Section (e.g., CSE-A)"
+                    value={newClass.section}
+                    onChange={(e) => setNewClass({...newClass, section: e.target.value})}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                  <input
+                    placeholder="Semester"
+                    value={newClass.semester}
+                    onChange={(e) => setNewClass({...newClass, semester: e.target.value})}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                  <input
+                    placeholder="Time (e.g., 10:00-11:00)"
+                    value={newClass.time}
+                    onChange={(e) => setNewClass({...newClass, time: e.target.value})}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={createClass} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg">
+                      Create
+                    </button>
+                    <button onClick={() => setShowCreateClass(false)} className="flex-1 bg-gray-200 py-2 rounded-lg">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-4">
+            {teacherClasses.map(classItem => (
+              <div key={classItem.id} className="bg-white rounded-xl shadow-sm border p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800">{classItem.subject}</h3>
+                    <p className="text-gray-600">{classItem.section} • {classItem.semester} Semester</p>
+                    <p className="text-sm text-gray-500 mt-1">{classItem.time}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-indigo-600">
+                      {getAttendancePercentage(classItem.id)}%
+                    </div>
+                    <p className="text-sm text-gray-600">Attendance</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 items-center text-sm text-gray-600 mb-4">
+                  <Users size={16} />
+                  <span>{classItem.students.length} Students Enrolled</span>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => startAttendance(classItem)}
+                    className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 font-medium"
+                  >
+                    Start Attendance
+                  </button>
+                  <button
+                    onClick={() => setActiveView('records')}
+                    className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 font-medium"
+                  >
+                    View Records
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Live Attendance Session
+  const LiveSession = () => {
+    const activeSession = sessions.find(s => s.active);
+    const classItem = classes.find(c => c.id === activeSession?.classId);
+    const [timeLeft, setTimeLeft] = useState(300);
+
+    useEffect(() => {
+      const timer = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            setSessions(sessions.map(s => s.id === activeSession.id ? {...s, active: false} : s));
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }, []);
+
+    const presentStudents = attendanceRecords.filter(
+      r => r.sessionId === activeSession?.id && r.status === 'present'
+    );
+
+    const endSession = () => {
+      setSessions(sessions.map(s => s.id === activeSession.id ? {...s, active: false} : s));
+      setActiveView('teacherDashboard');
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="text-center mb-8">
+              <div className="bg-green-600 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="text-white" size={40} />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">Attendance Live!</h2>
+              <p className="text-gray-600">{classItem?.subject} - {classItem?.section}</p>
+            </div>
+
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-8 text-center mb-6">
+              <p className="text-white text-sm font-medium mb-2">SESSION CODE</p>
+              <div className="text-5xl font-bold text-white tracking-wider mb-4">
+                {activeSession?.code}
+              </div>
+              <div className="flex items-center justify-center gap-2 text-white">
+                <Clock size={18} />
+                <span className="text-lg font-medium">
+                  {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-6 mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-gray-800">Students Present</h3>
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {presentStudents.length} / {classItem?.students.length}
+                </span>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {presentStudents.map(record => {
+                  const student = users.find(u => u.id === record.studentId);
+                  return (
+                    <div key={record.id} className="flex items-center gap-3 bg-white p-3 rounded-lg">
+                      <CheckCircle className="text-green-600" size={20} />
+                      <span className="font-medium">{student?.name}</span>
+                      <span className="text-sm text-gray-500 ml-auto">{record.time}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              onClick={endSession}
+              className="w-full bg-red-600 text-white py-3 rounded-lg font-medium hover:bg-red-700"
+            >
+              End Attendance Session
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Student Dashboard
+  const StudentDashboard = () => {
+    const [showMarkAttendance, setShowMarkAttendance] = useState(false);
+    const [sessionCode, setSessionCode] = useState('');
+
+    const studentClasses = classes.filter(c => c.students.includes(currentUser.id));
+
+    const markAttendance = () => {
+      const session = sessions.find(s => s.code === sessionCode && s.active);
+      if (session) {
+        const record = {
+          id: 'r' + (attendanceRecords.length + 1),
+          sessionId: session.id,
+          classId: session.classId,
+          studentId: currentUser.id,
+          status: 'present',
+          time: new Date().toLocaleTimeString(),
+          date: session.date
+        };
+        setAttendanceRecords([...attendanceRecords, record]);
+        alert('Attendance marked successfully!');
+        setShowMarkAttendance(false);
+        setSessionCode('');
+      } else {
+        alert('Invalid or expired session code');
+      }
+    };
+
+    const getStudentAttendance = (classId) => {
+      const records = attendanceRecords.filter(r => r.classId === classId && r.studentId === currentUser.id);
+      const totalSessions = sessions.filter(s => s.classId === classId).length;
+      if (totalSessions === 0) return 0;
+      return Math.round((records.length / totalSessions) * 100);
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="bg-indigo-600 w-10 h-10 rounded-lg flex items-center justify-center">
+                <Users className="text-white" size={20} />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-800">Student Dashboard</h1>
+                <p className="text-sm text-gray-600">{currentUser.name}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { setUserRole(null); setCurrentUser(null); setActiveView('login'); }}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">My Classes</h2>
+            <button
+              onClick={() => setShowMarkAttendance(true)}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+            >
+              <CheckCircle size={20} />
+              Mark Attendance
+            </button>
+          </div>
+
+          {showMarkAttendance && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-xl p-6 w-full max-w-md">
+                <h3 className="text-xl font-bold mb-4">Enter Session Code</h3>
+                <input
+                  placeholder="Enter 6-digit code"
+                  value={sessionCode}
+                  onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
+                  className="w-full px-4 py-3 border rounded-lg text-center text-2xl font-bold tracking-wider mb-4"
+                  maxLength={6}
+                />
+                <div className="flex gap-2">
+                  <button onClick={markAttendance} className="flex-1 bg-green-600 text-white py-2 rounded-lg">
+                    Submit
+                  </button>
+                  <button onClick={() => setShowMarkAttendance(false)} className="flex-1 bg-gray-200 py-2 rounded-lg">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-4">
+            {studentClasses.map(classItem => {
+              const attendance = getStudentAttendance(classItem.id);
+              const teacher = users.find(u => u.id === classItem.teacherId);
+              
+              return (
+                <div key={classItem.id} className="bg-white rounded-xl shadow-sm border p-6">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-800">{classItem.subject}</h3>
+                      <p className="text-gray-600">{classItem.section} • {teacher?.name}</p>
+                      <p className="text-sm text-gray-500 mt-1">{classItem.time}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-3xl font-bold ${attendance >= 75 ? 'text-green-600' : 'text-red-600'}`}>
+                        {attendance}%
+                      </div>
+                      <p className="text-sm text-gray-600">Attendance</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={16} className="text-gray-500" />
+                      <span>{sessions.filter(s => s.classId === classItem.id).length} Classes</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={16} className="text-green-600" />
+                      <span>{attendanceRecords.filter(r => r.classId === classItem.id && r.studentId === currentUser.id).length} Attended</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Main Render
+  if (activeView === 'login') return <LoginScreen />;
+  if (activeView === 'teacherDashboard') return <TeacherDashboard />;
+  if (activeView === 'liveSession') return <LiveSession />;
+  if (activeView === 'studentDashboard') return <StudentDashboard />;
+
+  return <LoginScreen />;
+};
+
+export default SmartAttendanceSystem;
